@@ -638,7 +638,7 @@ Page {
         sourceComponent: addItems
         onClosed: {
             if (!item.currentItem.isNull)
-                root.addItemRow(item.currentItem)
+                root.addItemRow(item.currentItem, item.currentColor)
         }
     }
 

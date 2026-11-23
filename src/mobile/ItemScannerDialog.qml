@@ -18,6 +18,20 @@ AutoSizingDialog {
     property string addButtonIconName: "edit-additems"
 
     property BL.Item currentItem
+    // the color of the scanned object according to the scanner, if it is valid for currentItem
+    property BL.Color currentColor
+
+    // the scanner's guesses for the color of the scanned object, best first
+    property var scanColors: []
+
+    // the best guess that is also a known color of the item, or "no color" if there is none
+    function colorFor(item) {
+        for (const color of root.scanColors) {
+            if (item.hasKnownColor(color))
+                return color
+        }
+        return BL.BrickLink.noColor
+    }
 
     BS.ExtraConfig {
         category: "ItemScannerDialog"
@@ -33,7 +47,8 @@ AutoSizingDialog {
         // the second page shows the scan results: no preview, no camera
         windowVisible: root.visible && (pages.currentIndex === 0)
 
-        onCaptureAndScanFinished: function(items) {
+        onCaptureAndScanFinished: function(items, colors) {
+            root.scanColors = colors
             let f = ""
             items.forEach(function (item) { f += (f ? "," : "") + item.itemType.id + item.id })
             itemList.filterText = "scan:" + f
@@ -106,7 +121,11 @@ AutoSizingDialog {
                     icon.name: root.addButtonIconName
                     text: root.addButtonText
                     enabled: !itemList.currentItem.isNull
-                    onClicked: { root.currentItem = itemList.currentItem; root.close() }
+                    onClicked: {
+                        root.currentItem = itemList.currentItem
+                        root.currentColor = root.colorFor(itemList.currentItem)
+                        root.close()
+                    }
                 }
             }
         }

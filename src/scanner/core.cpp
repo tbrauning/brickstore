@@ -9,6 +9,7 @@
 #include <QNetworkRequest>
 #include <QNetworkReply>
 #include <QHttpMultiPart>
+#include <QUrlQuery>
 #include <QBuffer>
 #include <QJsonDocument>
 #include <QJsonArray>
@@ -129,7 +130,16 @@ uint Core::scan(const QImage &image, const BrickLink::ItemType *filter, const QB
             .save(&buffer, "JPG");
         buffer.close();
 
-        QNetworkRequest req(QUrl(u"https://api.brickognize.com" + path));
+        QUrl url(u"https://api.brickognize.com" + path);
+
+        // only the generic and the parts endpoints can predict colors
+        if ((itemTypeId != 'S') && (itemTypeId != 'M')) {
+            QUrlQuery query;
+            query.addQueryItem(u"predict_color"_qs, u"true"_qs);
+            url.setQuery(query);
+        }
+
+        QNetworkRequest req(url);
         QString ua = QCoreApplication::applicationName() + u'/' + QCoreApplication::applicationVersion();
         req.setHeader(QNetworkRequest::UserAgentHeader, ua);
         req.setRawHeader("Accept", "application/json");
@@ -221,7 +231,26 @@ uint Core::scan(const QImage &image, const BrickLink::ItemType *filter, const QB
                     return is1.score > is2.score;
                 });
 
-                emit scanFinished(scanId, itemsAndScores);
+                // Brickognize's color ids are not BrickLink's (its "Red" is 4, but 5 on BrickLink),
+                // so match by name instead
+                QVector<std::pair<double, const BrickLink::Color *>> colorsAndScores;
+                const auto jsonColors = json[u"colors"_qs].toArray();
+                for (const auto jsonColor : jsonColors) {
+                    const auto colorName = jsonColor[u"name"_qs].toString();
+                    if (const auto *color = BrickLink::core()->colorFromName(colorName))
+                        colorsAndScores.emplace_back(jsonColor[u"score"_qs].toDouble(), color);
+                    else
+                        qCDebug(LogScanner) << "Brickognize returned an unknown color:" << colorName;
+                }
+                std::stable_sort(colorsAndScores.begin(), colorsAndScores.end(),
+                                 [](const auto &c1, const auto &c2) { return c1.first > c2.first; });
+
+                QVector<const BrickLink::Color *> colors;
+                colors.reserve(colorsAndScores.size());
+                for (const auto &cs : std::as_const(colorsAndScores))
+                    colors << cs.second;
+
+                emit scanFinished(scanId, itemsAndScores, colors);
             }
             d->scanning.remove(backendId);
             reply->deleteLater();

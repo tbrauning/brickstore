@@ -98,7 +98,8 @@ Capture::Capture(QObject *parent)
     });
 
     connect(core(), &Core::scanFinished,
-            this, [this](uint scanId, const QVector<Core::Result> &itemsAndScores) {
+            this, [this](uint scanId, const QVector<Core::Result> &itemsAndScores,
+                         const QVector<const BrickLink::Color *> &colors) {
         if (scanId == d->currentScanId) {
             d->currentScanId = 0;
             d->lastError.clear();
@@ -117,7 +118,7 @@ Capture::Capture(QObject *parent)
                 setState(State::NoMatch);
             } else {
                 setState(State::Idle);
-                emit captureAndScanFinished(items);
+                emit captureAndScanFinished(items, colors);
             }
         }
     });

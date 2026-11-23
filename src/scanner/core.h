@@ -49,7 +49,11 @@ public:
               const QByteArray &backendId = { });
 
 signals:
-    void scanFinished(uint id, const QVector<Scanner::Core::Result> &itemsAndScores);
+    // The colors are the backend's guesses for the color of the object in the image, best first
+    // (they are not tied to one of the items) - and only the ones that BrickLink knows. Backends
+    // that cannot detect colors, or items that have none, just leave this empty.
+    void scanFinished(uint id, const QVector<Scanner::Core::Result> &itemsAndScores,
+                      const QVector<const BrickLink::Color *> &colors = { });
     void scanFailed(uint id, const QString &error);
 
 private:

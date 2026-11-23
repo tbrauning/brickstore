@@ -12,12 +12,17 @@ QmlCapture::QmlCapture(QObject *parent)
     , d(new Capture(this))
 {
     connect(d, &Capture::captureAndScanFinished,
-            this, [this](const QVector<const BrickLink::Item*> &items) {
+            this, [this](const QVector<const BrickLink::Item*> &items,
+                         const QVector<const BrickLink::Color*> &colors) {
         QVariantList qmlItems;
         qmlItems.reserve(items.size());
         for (const auto *item : items)
             qmlItems << QVariant::fromValue(BrickLink::QmlItem(item));
-        emit captureAndScanFinished(qmlItems);
+        QVariantList qmlColors;
+        qmlColors.reserve(colors.size());
+        for (const auto *color : colors)
+            qmlColors << QVariant::fromValue(BrickLink::QmlColor(color));
+        emit captureAndScanFinished(qmlItems, qmlColors);
     });
     connect(d, &Capture::progressChanged,
             this, &QmlCapture::progressChanged);

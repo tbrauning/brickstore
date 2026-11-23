@@ -78,7 +78,8 @@ public:
     Q_SIGNAL void supportedItemTypeFiltersChanged(const QList<const BrickLink::ItemType *> &filters);
 
 signals:
-    void captureAndScanFinished(const QVector<const BrickLink::Item *> &items);
+    void captureAndScanFinished(const QVector<const BrickLink::Item *> &items,
+                                const QVector<const BrickLink::Color *> &colors = { });
 
 private:
     void setState(State newState);

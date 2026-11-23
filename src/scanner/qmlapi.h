@@ -80,7 +80,8 @@ public:
     Q_INVOKABLE void captureAndScan();
 
 signals:
-    void captureAndScanFinished(const QVariantList &items);
+    // colors: the guesses for the color of the scanned object, best first, as BrickLink colors
+    void captureAndScanFinished(const QVariantList &items, const QVariantList &colors);
 
 private:
     Capture *d;
