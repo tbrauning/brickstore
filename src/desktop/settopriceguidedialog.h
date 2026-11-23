@@ -22,6 +22,7 @@ public:
     BrickLink::Price price() const;
     BrickLink::NoPriceGuideOption noPriceGuideOption() const;
     bool forceUpdate() const;
+    bool useOutdatedCache() const;
 
 private:
     QButtonGroup *m_noPgOptions;

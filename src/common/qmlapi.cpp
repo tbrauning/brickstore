@@ -636,9 +636,11 @@ void QmlDocument::cancelBlockingOperation()
     m_doc->cancelBlockingOperation();
 }
 
-void QmlDocument::setPriceToGuide(BrickLink::Time time, BrickLink::Price price, bool forceUpdate)
+void QmlDocument::setPriceToGuide(BrickLink::Time time, BrickLink::Price price, bool forceUpdate,
+                                  bool useOutdatedCache)
 {
-    m_doc->setPriceToGuide(time, price, forceUpdate, BrickLink::NoPriceGuideOption::Marker);
+    m_doc->setPriceToGuide(time, price, forceUpdate, BrickLink::NoPriceGuideOption::Marker,
+                           useOutdatedCache);
 }
 
 void QmlDocument::setColor(BrickLink::QmlColor color)

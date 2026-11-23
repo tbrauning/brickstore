@@ -741,16 +741,19 @@ void PriceGuideCache::updatePriceGuide(const PriceGuideRef &pg, bool highPriorit
     if (!pg || !pg->item() || (pg->m_updateStatus == UpdateStatus::Updating))
         return;
 
+    // This has to come first: failing while the cached data is still being loaded would report
+    // an error for a price guide that is perfectly usable a moment later. The load callback
+    // starts the update (and thus fails, if we are offline) once the cached data is in place.
+    if (pg->m_updateStatus == UpdateStatus::Loading) {
+        pg->m_updateAfterLoad = true;
+        return;
+    }
+
     if (QNetworkInformation::instance()
         && QNetworkInformation::instance()->supports(QNetworkInformation::Feature::Reachability)
         && (QNetworkInformation::instance()->reachability() != QNetworkInformation::Reachability::Online)) {
         pg->setUpdateStatus(UpdateStatus::UpdateFailed);
         emit priceGuideUpdated(pg);
-        return;
-    }
-
-    if (pg->m_updateStatus == UpdateStatus::Loading) {
-        pg->m_updateAfterLoad = true;
         return;
     }
 

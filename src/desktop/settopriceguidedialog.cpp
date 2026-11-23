@@ -42,6 +42,9 @@ SetToPriceGuideDialog::SetToPriceGuideDialog(QWidget *parent)
     if (option)
         option->setChecked(true);
 
+    w_use_outdated_cache->setChecked(Config::inst()->value(u"MainWindow/SetToPriceGuideDialog/UseOutdatedCache"_qs,
+                                                           true).toBool());
+
     auto pgCache = BrickLink::core()->priceGuideCache();
     w_vatTypeDescription->setText(pgCache->descriptionForVatType(pgCache->currentVatType()));
     w_vatTypeIcon->setPixmap(pgCache->iconForVatType(pgCache->currentVatType()).pixmap(
@@ -53,6 +56,7 @@ SetToPriceGuideDialog::~SetToPriceGuideDialog()
     Config::inst()->setValue(u"MainWindow/SetToPriceGuideDialog/Time"_qs, w_type_time->currentIndex());
     Config::inst()->setValue(u"MainWindow/SetToPriceGuideDialog/Price"_qs, w_type_price->currentIndex());
     Config::inst()->setValue(u"MainWindow/SetToPriceGuideDialog/NoPriceOption"_qs, m_noPgOptions->checkedId());
+    Config::inst()->setValue(u"MainWindow/SetToPriceGuideDialog/UseOutdatedCache"_qs, w_use_outdated_cache->isChecked());
 }
 
 BrickLink::Time SetToPriceGuideDialog::time() const
@@ -73,6 +77,11 @@ BrickLink::NoPriceGuideOption SetToPriceGuideDialog::noPriceGuideOption() const
 bool SetToPriceGuideDialog::forceUpdate() const
 {
     return w_force_update->isChecked();
+}
+
+bool SetToPriceGuideDialog::useOutdatedCache() const
+{
+    return w_use_outdated_cache->isChecked();
 }
 
 #include "moc_settopriceguidedialog.cpp"

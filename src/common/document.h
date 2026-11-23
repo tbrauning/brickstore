@@ -11,6 +11,7 @@
 #include <QMultiHash>
 #include <QModelIndex>
 #include <QPointer>
+#include <QDateTime>
 
 #include <QCoro/QCoroTask>
 
@@ -171,8 +172,10 @@ public:
     void roundCost();
     void setFilterFromSelection();
     void setPrice(double price);
+    // If BrickLink cannot be reached or returns an error, useOutdatedCache makes this fall back to
+    // the price guide data in the local cache, no matter how old it is.
     void setPriceToGuide(BrickLink::Time time, BrickLink::Price price, bool forceUpdate,
-                         BrickLink::NoPriceGuideOption noPgOption);
+                         BrickLink::NoPriceGuideOption noPgOption, bool useOutdatedCache = true);
     void priceAdjust(bool isFixed, double value, bool applyToTiers);
     void setRelativeTierPrices(const std::array<double, 3> &percentagesOff);
     void roundPrice();
@@ -321,6 +324,9 @@ private:
         int              failCount = 0;
         int              doneCount = 0;
         int              totalCount = 0;
+        int              outdatedCount = 0;       // prices taken from cached data after a failed update
+        QDateTime        oldestOutdated;          // ... and the age of the oldest of those
+        bool             useOutdatedCache = true;
         BrickLink::Time  time;
         BrickLink::Price price;
         double           currencyRate;

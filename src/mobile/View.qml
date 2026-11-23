@@ -535,7 +535,8 @@ Page {
     DialogLoader {
         id: setToPGDialog
         source: "SetToPriceGuideDialog.qml"
-        onAccepted: root.document.setPriceToGuide(item.time, item.price, item.forceUpdate)
+        onAccepted: root.document.setPriceToGuide(item.time, item.price, item.forceUpdate,
+                                                   item.useOutdatedCache)
     }
 
     DialogLoader {

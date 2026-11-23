@@ -13,6 +13,7 @@ AutoSizingDialog {
     standardButtons: DialogButtonBox.Cancel | DialogButtonBox.Ok
 
     property alias forceUpdate: force.checked
+    property alias useOutdatedCache: outdatedCache.checked
     property int time: timePastSix.checked ? BL.BrickLink.Time.PastSix
                                            : BL.BrickLink.Time.Current
     property int price: priceLow.checked ? BL.BrickLink.Price.Lowest
@@ -25,6 +26,7 @@ AutoSizingDialog {
 
         property alias time: root.time
         property alias price: root.price
+        property alias useOutdatedCache: root.useOutdatedCache
     }
 
     Connections { // 2-way binding for ExtraConfig
@@ -88,6 +90,12 @@ AutoSizingDialog {
                     id: vatTypeDescription
                     text: BL.BrickLink.descriptionForVatType(BL.BrickLink.currentVatType)
                 }
+            }
+            Switch {
+                id: outdatedCache
+                Layout.fillWidth: true
+                text: qsTr("If BrickLink cannot provide new data, use cached data, however old")
+                checked: true
             }
             Switch {
                 id: advancedSwitch

@@ -91,6 +91,19 @@
     </layout>
    </item>
    <item>
+    <widget class="QCheckBox" name="w_use_outdated_cache">
+     <property name="toolTip">
+      <string>If BrickLink is down, cannot be reached, or returns an error (e.g. &quot;Too Many Requests&quot;), the Price Guide data in the local cache is used instead, no matter how old it is.</string>
+     </property>
+     <property name="text">
+      <string>If BrickLink cannot provide new data, use cached data, however old</string>
+     </property>
+     <property name="checked">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="ExpandButton" name="w_advanced_button">
      <property name="text">
       <string>Advanced options</string>

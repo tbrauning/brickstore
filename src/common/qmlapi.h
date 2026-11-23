@@ -107,7 +107,8 @@ public:
     Q_INVOKABLE void endBlockingOperation();
     Q_INVOKABLE void cancelBlockingOperation();
 
-    Q_INVOKABLE void setPriceToGuide(BrickLink::Time time, BrickLink::Price price, bool forceUpdate);
+    Q_INVOKABLE void setPriceToGuide(BrickLink::Time time, BrickLink::Price price, bool forceUpdate,
+                                     bool useOutdatedCache = true);
     Q_INVOKABLE void setColor(BrickLink::QmlColor color);
     Q_INVOKABLE bool setItemId(const QString &itemId);
 

@@ -1029,7 +1029,7 @@ void Document::setPrice(double price)
 }
 
 void Document::setPriceToGuide(BrickLink::Time time, BrickLink::Price price, bool forceUpdate,
-                               BrickLink::NoPriceGuideOption noPgOption)
+                               BrickLink::NoPriceGuideOption noPgOption, bool useOutdatedCache)
 {
     Q_ASSERT(!m_setToPG);
 
@@ -1055,11 +1055,18 @@ void Document::setPriceToGuide(BrickLink::Time time, BrickLink::Price price, boo
     m_setToPG->price = price;
     m_setToPG->currencyRate = currencyRate;
     m_setToPG->noPgOption = noPgOption;
+    m_setToPG->useOutdatedCache = useOutdatedCache;
 
     for (Lot *lot : sel) {
         BrickLink::PriceGuideRef pg = BrickLink::core()->priceGuideCache()->priceGuide(lot->item(), lot->color());
 
-        if (pg && forceUpdate && (pg->updateStatus() != BrickLink::UpdateStatus::Updating)) {
+        // A price guide that is still marked as "failed" from an earlier attempt is not going to
+        // be updated by itself (it has data, so it is not reloaded): without trying again, we
+        // would keep using outdated data long after BrickLink is back.
+        const bool retryFailedUpdate = pg && (pg->updateStatus() == BrickLink::UpdateStatus::UpdateFailed);
+
+        if (pg && (forceUpdate || retryFailedUpdate)
+                && (pg->updateStatus() != BrickLink::UpdateStatus::Updating)) {
             BrickLink::core()->priceGuideCache()->updatePriceGuide(pg);
         }
 
@@ -1084,8 +1091,14 @@ void Document::setPriceToGuide(BrickLink::Time time, BrickLink::Price price, boo
 
 bool Document::updatePriceToGuide(BrickLink::Lot *lot, const BrickLink::PriceGuide *pg)
 {
+    // A failed update leaves the cached data untouched, so a price guide that failed to update,
+    // but is valid, still has the data from the last successful download - however old.
+    const bool updateFailed = pg && (pg->updateStatus() == BrickLink::UpdateStatus::UpdateFailed);
+    const bool useOutdated = updateFailed && pg->isValid() && m_setToPG->useOutdatedCache
+                             && !m_setToPG->canceled;
+
     bool hasError = !pg || !pg->isValid()
-                    || (pg->updateStatus() == BrickLink::UpdateStatus::UpdateFailed)
+                    || (updateFailed && !useOutdated)
                     || m_setToPG->canceled;
     double price = hasError ? 0 : pg->price(m_setToPG->time, lot->condition(), m_setToPG->price) * m_setToPG->currencyRate;
 
@@ -1110,14 +1123,22 @@ bool Document::updatePriceToGuide(BrickLink::Lot *lot, const BrickLink::PriceGui
         }
         return false;
 
-    } else if (!qFuzzyCompare(price, lot->price())) {
+    }
+
+    if (useOutdated) {
+        ++m_setToPG->outdatedCount;
+        if (pg->lastUpdated().isValid()
+                && (!m_setToPG->oldestOutdated.isValid() || (pg->lastUpdated() < m_setToPG->oldestOutdated))) {
+            m_setToPG->oldestOutdated = pg->lastUpdated();
+        }
+    }
+
+    if (!qFuzzyCompare(price, lot->price())) {
         Lot newLot = *lot;
         newLot.setPrice(price);
         m_setToPG->changes.emplace_back(lot, newLot);
-        return true;
-    } else {
-        return true;
     }
+    return true;
 }
 
 void Document::priceGuideUpdated(const BrickLink::PriceGuideRef &pg)
@@ -1144,6 +1165,8 @@ void Document::priceGuideUpdated(const BrickLink::PriceGuideRef &pg)
             && (m_setToPG->doneCount == m_setToPG->totalCount)) {
         int failCount = m_setToPG->failCount;
         int successCount = m_setToPG->totalCount - failCount;
+        const int outdatedCount = m_setToPG->outdatedCount;
+        const QDateTime oldestOutdated = m_setToPG->oldestOutdated;
         m_model->changeLots(m_setToPG->changes);
         m_setToPG.reset();
 
@@ -1155,6 +1178,13 @@ void Document::priceGuideUpdated(const BrickLink::PriceGuideRef &pg)
         if (failCount) {
             s = s + u"<br><br>" + tr("%1 have been skipped, because of missing Price Guide records or network errors.")
                     .arg(CMB_BOLD(QString::number(failCount)));
+        }
+        if (outdatedCount) {
+            s = s + u"<br><br>" + tr("BrickLink could not be reached or returned an error: %1 used "
+                                     "cached Price Guide data instead, which is up to %2 old.")
+                    .arg(CMB_BOLD(QString::number(outdatedCount)),
+                         CMB_BOLD(tr("%n day(s)", nullptr,
+                                     int(qMax(qint64(0), oldestOutdated.daysTo(QDateTime::currentDateTime()))))));
         }
 
         emit requestActivation();
