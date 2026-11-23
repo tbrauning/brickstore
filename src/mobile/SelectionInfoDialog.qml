@@ -16,6 +16,12 @@ AutoSizingDialog {
 
     property var simpleLots: []
 
+    // Enables the "Part out" and "Add item" entries in the long-press menu of the item lists.
+    // The owner of this dialog has to handle the two signals below.
+    property bool documentActions: false
+    signal partOutRequested(var item)
+    signal addItemRequested(var item, var color)
+
     function updateInfos() {
         let item = BL.BrickLink.noItem
         let color = BL.BrickLink.noColor
@@ -171,24 +177,36 @@ AutoSizingDialog {
 
                     InventoryWidget {
                         id: appearsIn
+                        documentActions: root.documentActions
+                        onPartOutRequested: (item) => root.partOutRequested(item)
+                        onAddItemRequested: (item, color) => root.addItemRequested(item, color)
                         mode: BL.InventoryModel.Mode.AppearsIn
                         simpleLots: root.simpleLots
                         visible: root.simpleLots.length > 0
                     }
                     InventoryWidget {
                         id: consistsOf
+                        documentActions: root.documentActions
+                        onPartOutRequested: (item) => root.partOutRequested(item)
+                        onAddItemRequested: (item, color) => root.addItemRequested(item, color)
                         mode: BL.InventoryModel.Mode.ConsistsOf
                         simpleLots: root.simpleLots
                         visible: root.simpleLots.length > 0
                     }
                     InventoryWidget {
                         id: canBuild
+                        documentActions: root.documentActions
+                        onPartOutRequested: (item) => root.partOutRequested(item)
+                        onAddItemRequested: (item, color) => root.addItemRequested(item, color)
                         mode: BL.InventoryModel.Mode.CanBuild
                         simpleLots: root.simpleLots
                         visible: root.simpleLots.length > 0
                     }
                     InventoryWidget {
                         id: related
+                        documentActions: root.documentActions
+                        onPartOutRequested: (item) => root.partOutRequested(item)
+                        onAddItemRequested: (item, color) => root.addItemRequested(item, color)
                         mode: BL.InventoryModel.Mode.Relationships
                         simpleLots: root.simpleLots
                         visible: root.simpleLots.length > 0

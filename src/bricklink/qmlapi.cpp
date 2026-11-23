@@ -1272,6 +1272,40 @@ QString QmlBrickLink::itemHtmlDescription(QmlItem item, QmlColor color, const QC
     return BrickLink::core()->itemHtmlDescription(item.wrappedObject(), color.wrappedObject(), highlight);
 }
 
+QUrl QmlBrickLink::urlForCatalogInfo(QmlItem item) const
+{
+    if (item.isNull())
+        return { };
+    return Core::urlForCatalogInfo(item.wrappedObject());
+}
+
+QUrl QmlBrickLink::urlForPriceGuideInfo(QmlItem item, QmlColor color) const
+{
+    if (item.isNull())
+        return { };
+    return Core::urlForPriceGuideInfo(item.wrappedObject(),
+                                      color.isNull() ? BrickLink::core()->color(0)
+                                                     : color.wrappedObject());
+}
+
+QUrl QmlBrickLink::urlForLotsForSale(QmlItem item, QmlColor color) const
+{
+    if (item.isNull())
+        return { };
+    return Core::urlForLotsForSale(item.wrappedObject(),
+                                   color.isNull() ? BrickLink::core()->color(0)
+                                                  : color.wrappedObject());
+}
+
+QUrl QmlBrickLink::urlForStoreItemSearch(QmlItem item, QmlColor color) const
+{
+    if (item.isNull())
+        return { };
+    return Core::urlForStoreItemSearch(item.wrappedObject(),
+                                       color.isNull() ? BrickLink::core()->color(0)
+                                                      : color.wrappedObject());
+}
+
 VatType QmlBrickLink::currentVatType() const
 {
     return BrickLink::core()->priceGuideCache()->currentVatType();

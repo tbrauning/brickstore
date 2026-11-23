@@ -31,10 +31,11 @@ Page {
         return BL.BrickLink.item("P", "")   // null item
     }
 
-    // Adds a new row for the item, using the first valid color, and selects it.
-    function addItemRow(newItem) {
-        let newColor = BL.BrickLink.color(0)
-        if (newItem.itemType.hasColors) {
+    // Adds a new row for the item and selects it. If no (valid) color is given, the first valid
+    // color of the item is used.
+    function addItemRow(newItem, color) {
+        let newColor = (color && !color.isNull) ? color : BL.BrickLink.color(0)
+        if ((!color || color.isNull) && newItem.itemType.hasColors) {
             let knownColors = newItem.knownColors
             if (knownColors.length > 0)
                 newColor = knownColors[0]
@@ -55,13 +56,64 @@ Page {
 
         Component {
             id: infoDialogComponent
-            SelectionInfoDialog { }
+            SelectionInfoDialog { documentActions: true }
         }
         sourceComponent: infoDialogComponent
 
         onOpened: {
             item.statistics = root.document.statistics()
             item.selection = root.document.selectedLots
+        }
+    }
+
+    // actions from the long-press menu of the lists in the info dialog
+    Connections {
+        target: infoDialog.item
+
+        function onAddItemRequested(newItem, color) {
+            infoDialog.item.close()
+            root.addItemRow(newItem, color)
+        }
+        function onPartOutRequested(partOutItem) {
+            partOutDialog.partOutItem = partOutItem
+            partOutDialog.open()
+        }
+    }
+
+    DialogLoader {
+        id: partOutDialog
+
+        property var partOutItem: BL.BrickLink.noItem
+
+        Component {
+            id: partOutComponent
+
+            AutoSizingDialog {
+                id: partOutRoot
+                title: qsTr("Part out")
+                keepPaddingInSmallMode: true
+                standardButtons: DialogButtonBox.Cancel | DialogButtonBox.Ok
+
+                property alias quantity: partOutWidget.quantity
+                property alias condition: partOutWidget.condition
+                property alias extraParts: partOutWidget.extraParts
+                property alias partOutTraits: partOutWidget.partOutTraits
+
+                ImportInventoryWidget {
+                    id: partOutWidget
+                    anchors.fill: parent
+                    padding: 0
+                    currentItem: partOutDialog.partOutItem
+                }
+            }
+        }
+
+        sourceComponent: partOutComponent
+        onAccepted: {
+            infoDialog.item?.close()
+            BS.BrickStore.importPartInventory(partOutItem, BL.BrickLink.noColor,
+                                              item.quantity, item.condition,
+                                              item.extraParts, item.partOutTraits)
         }
     }
 

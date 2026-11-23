@@ -205,6 +205,13 @@ public:
     Q_INVOKABLE QString itemHtmlDescription(BrickLink::QmlItem item, BrickLink::QmlColor color,
                                             const QColor &highlight) const;
 
+    // URLs of the BrickLink website pages for any item (and color), e.g. to be used with
+    // Qt.openUrlExternally(). A null color is treated as "(Not Applicable)", like on the desktop.
+    Q_INVOKABLE QUrl urlForCatalogInfo(BrickLink::QmlItem item) const;
+    Q_INVOKABLE QUrl urlForPriceGuideInfo(BrickLink::QmlItem item, BrickLink::QmlColor color) const;
+    Q_INVOKABLE QUrl urlForLotsForSale(BrickLink::QmlItem item, BrickLink::QmlColor color) const;
+    Q_INVOKABLE QUrl urlForStoreItemSearch(BrickLink::QmlItem item, BrickLink::QmlColor color) const;
+
     BrickLink::VatType currentVatType() const;
     void setCurrentVatType(BrickLink::VatType vatType);
     QVariantList supportedVatTypes() const;

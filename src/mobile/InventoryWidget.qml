@@ -14,12 +14,65 @@ Control {
     required property int mode // BrickLink.InventoryModel.Mode
     required property var simpleLots // [ { item: , color: , quantity: } ]
 
+    // "Part out" and "Add item" need a document / a new document to work with, so the
+    // owner of this widget has to opt-in and handle the signals below
+    property bool documentActions: false
+
+    signal partOutRequested(var item)
+    signal addItemRequested(var item, var color)
+
     onSimpleLotsChanged: { delayedUpdateTimer.start() }
 
     Timer {
         id: delayedUpdateTimer
         interval: 100
         onTriggered: { listView.model = BL.BrickLink.inventoryModel(root.mode, root.simpleLots) }
+    }
+
+    // One shared context menu for all delegates, filled in on a long press
+    AutoSizingMenu {
+        id: contextMenu
+
+        property BL.Item entryItem: BL.BrickLink.noItem
+        property BL.Color entryColor: BL.BrickLink.noColor
+
+        MenuItem {
+            text: qsTr("Part out item...")
+            visible: root.documentActions
+            height: visible ? implicitHeight : 0
+            enabled: contextMenu.entryItem.hasInventory
+            onTriggered: root.partOutRequested(contextMenu.entryItem)
+        }
+        MenuItem {
+            text: qsTr("Add item")
+            visible: root.documentActions
+            height: visible ? implicitHeight : 0
+            onTriggered: root.addItemRequested(contextMenu.entryItem, contextMenu.entryColor)
+        }
+        MenuSeparator { visible: root.documentActions }
+        MenuItem {
+            text: qsTr("Show BrickLink Catalog Info...")
+            enabled: BS.OnlineState.online
+            onTriggered: Qt.openUrlExternally(BL.BrickLink.urlForCatalogInfo(contextMenu.entryItem))
+        }
+        MenuItem {
+            text: qsTr("Show BrickLink Price Guide Info...")
+            enabled: BS.OnlineState.online
+            onTriggered: Qt.openUrlExternally(BL.BrickLink.urlForPriceGuideInfo(contextMenu.entryItem,
+                                                                                 contextMenu.entryColor))
+        }
+        MenuItem {
+            text: qsTr("Show Lots for Sale on BrickLink...")
+            enabled: BS.OnlineState.online
+            onTriggered: Qt.openUrlExternally(BL.BrickLink.urlForLotsForSale(contextMenu.entryItem,
+                                                                              contextMenu.entryColor))
+        }
+        MenuItem {
+            text: qsTr("Show in my Store on BrickLink...")
+            enabled: BS.OnlineState.online
+            onTriggered: Qt.openUrlExternally(BL.BrickLink.urlForStoreItemSearch(contextMenu.entryItem,
+                                                                                  contextMenu.entryColor))
+        }
     }
 
     ListView {
@@ -67,6 +120,13 @@ Control {
                                                ? BL.BrickLink.color(colorPointer) : BL.BrickLink.noColor
                     property int showQuantity: (root.mode === BL.InventoryModel.Mode.ConsistsOf)
                                                || (root.mode === BL.InventoryModel.Mode.AppearsIn)
+
+                    onPressAndHold: {
+                        // blcolor is only set in "Consists of" mode, otherwise it is "no color"
+                        contextMenu.entryItem = delegate.blitem
+                        contextMenu.entryColor = delegate.blcolor
+                        contextMenu.popup(delegate, delegate.width / 2, delegate.height / 2)
+                    }
 
                     GridLayout {
                         id: layout
