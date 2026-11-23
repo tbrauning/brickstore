@@ -338,8 +338,13 @@ void DocumentDelegate::paint(QPainter *p, const QStyleOptionViewItem &option, co
         break;
 
     case DocumentModel::Picture: {
-        if (auto pic = BrickLink::core()->pictureCache()->picture(lot->item(), lot->color()))
-            image = pic->image();
+        if (auto pic = BrickLink::core()->pictureCache()->picture(lot->item(), lot->color())) {
+            // if BrickLink cannot provide an image, show a rendering of the part instead. The
+            // result arrives via DocumentModel::pictureUpdated(), which repaints this cell.
+            if (!pic->isValid())
+                BrickLink::core()->pictureCache()->requestFallbackImage(pic);
+            image = pic->displayImage();
+        }
         double dpr = p->device()->devicePixelRatioF();
         QSize s = option.rect.size();
 

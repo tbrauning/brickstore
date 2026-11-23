@@ -54,6 +54,10 @@ public:
     int m_loadsStatId = -1;
     int m_savesStatId = -1;
 
+    PictureCache::FallbackRenderer m_fallbackRenderer;
+    QVector<PictureRef> m_fallbackQueue;   // used as a stack: the last request is the most urgent
+    bool m_fallbackRunning = false;
+
     static quint32 cacheKey(const Item *item, const Color *color);
     static QString databaseTag(const Picture *pic);
     static bool imageFromData(QImage &img, const QByteArray &data);
@@ -65,6 +69,7 @@ public:
     void loadThread(QString dbName, int index);
     void saveThread(QString dbName, int index);
     void transferJobFinished(TransferJob *j, const PictureRef &pic);
+    QCoro::Task<> runFallbackQueue();
 };
 
 } // namespace BrickLink

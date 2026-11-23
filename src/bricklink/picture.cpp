@@ -9,6 +9,7 @@
 #include <QtCore/QLoggingCategory>
 #include <QtCore/QCoreApplication>
 #include <QtCore/QThread>
+#include <QtCore/QPointer>
 #include <QtNetwork/QNetworkInformation>
 #include <QtSql/QSqlError>
 #include <QtSql/QSqlQuery>
@@ -69,12 +70,15 @@ const QImage Picture::image() const
     return m_image;
 }
 
+const QImage Picture::displayImage() const
+{
+    return (m_valid && !m_image.isNull()) ? m_image : m_fallbackImage;
+}
+
 int Picture::cost() const
 {
-    if (m_image.isNull())
-        return 1;
-    else
-        return int(m_image.sizeInBytes() / 1024);
+    const qsizetype bytes = m_image.sizeInBytes() + m_fallbackImage.sizeInBytes();
+    return bytes ? int(bytes / 1024) : 1;
 }
 
 void Picture::setIsValid(bool valid)
@@ -83,6 +87,9 @@ void Picture::setIsValid(bool valid)
         m_valid = valid;
         emit isValidChanged(valid);
     }
+    // the real thing has arrived: the stand-in is of no use anymore
+    if (m_valid && !m_image.isNull() && (m_fallbackState != FallbackNone))
+        setFallbackImage({ });
 }
 
 void Picture::setUpdateStatus(UpdateStatus status)
@@ -106,6 +113,17 @@ void Picture::setImage(const QImage &newImage)
     if (newImage != m_image) {
         m_image = newImage;
         emit imageChanged(m_image);
+    }
+}
+
+void Picture::setFallbackImage(const QImage &newFallbackImage)
+{
+    // a null image resets the state, so the next request starts from scratch
+    m_fallbackState = newFallbackImage.isNull() ? FallbackNone : FallbackDone;
+
+    if (newFallbackImage != m_fallbackImage) {
+        m_fallbackImage = newFallbackImage;
+        emit fallbackImageChanged(m_fallbackImage);
     }
 }
 
@@ -376,6 +394,46 @@ void PictureCache::updatePicture(const PictureRef &pic, bool highPriority)
     // the job owns a reference, so the picture cannot go away while it is being downloaded
     pic->m_transferJob->setUserData("picture", QVariant::fromValue(pic));
     d->m_core->retrieve(pic->m_transferJob, highPriority);
+}
+
+void PictureCache::setFallbackRenderer(FallbackRenderer renderer)
+{
+    d->m_fallbackRenderer = std::move(renderer);
+}
+
+void PictureCache::requestFallbackImage(const PictureRef &pic)
+{
+    if (!d->m_fallbackRenderer || !pic || !pic->item())
+        return;
+    if (pic->isValid() || (pic->m_fallbackState != Picture::FallbackNone))
+        return;
+    // BrickLink gets its chance first
+    if ((pic->updateStatus() == UpdateStatus::Loading) || (pic->updateStatus() == UpdateStatus::Updating))
+        return;
+
+    pic->m_fallbackState = Picture::FallbackQueued;
+    d->m_fallbackQueue.append(pic);
+
+    if (!d->m_fallbackRunning) {
+        d->m_fallbackRunning = true;
+        // never render right away: we are probably being called from a paint event or from a
+        // property binding, and the renderer spins its own event loop
+        QMetaObject::invokeMethod(this, [this]() { d->runFallbackQueue(); }, Qt::QueuedConnection);
+    }
+}
+
+void PictureCache::retryFallbackImages()
+{
+    const auto keys = d->m_cache.keys();
+    for (const auto &key : keys) {
+        if (auto pic = d->m_cache.object(key)) {
+            if (pic->m_fallbackState == Picture::FallbackFailed) {
+                pic->m_fallbackState = Picture::FallbackNone;
+                // this makes the views ask again
+                emit pictureUpdated(pic);
+            }
+        }
+    }
 }
 
 void PictureCache::cancelPictureUpdate(const PictureRef &pic)
@@ -652,6 +710,44 @@ void PictureCachePrivate::saveThread(QString dbName, int index)
         }
     }
     db.close();
+}
+
+QCoro::Task<> PictureCachePrivate::runFallbackQueue()
+{
+    QPointer<PictureCache> guard(q);
+
+    while (!m_fallbackQueue.isEmpty()) {
+        PictureRef pic = m_fallbackQueue.takeLast();
+
+        // A lot can happen between the request and now: the download may have started in the
+        // meantime (we will be asked again if it fails), or even succeeded.
+        const bool tooEarly = (pic->updateStatus() == UpdateStatus::Loading)
+                              || (pic->updateStatus() == UpdateStatus::Updating);
+        if (pic->isStale() || !pic->item() || pic->isValid() || tooEarly) {
+            pic->m_fallbackState = Picture::FallbackNone;
+            continue;
+        }
+
+        const QImage image = co_await m_fallbackRenderer(pic->item(), pic->color());
+
+        if (!guard) // we are gone: nothing is safe to touch anymore
+            co_return;
+
+        if (pic->isStale() || pic->isValid()) {
+            // the real image won the race
+            pic->m_fallbackState = Picture::FallbackNone;
+            continue;
+        }
+
+        if (image.isNull()) {
+            pic->m_fallbackState = Picture::FallbackFailed;
+        } else {
+            pic->setFallbackImage(image);
+            m_cache.setObjectCost(cacheKey(pic->item(), pic->color()), pic->cost());
+            emit q->pictureUpdated(pic);
+        }
+    }
+    m_fallbackRunning = false;
 }
 
 void PictureCachePrivate::transferJobFinished(TransferJob *j, const PictureRef &pic)

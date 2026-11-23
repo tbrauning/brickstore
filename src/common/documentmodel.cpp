@@ -2028,7 +2028,7 @@ void DocumentModel::initializeColumns()
               // Not the picture itself: a reference is of no use to a data role, and a raw pointer
               // would not keep it alive. Whoever renders this column asks the cache directly.
               auto pic = BrickLink::core()->pictureCache()->picture(lot->item(), lot->color());
-              return QVariant::fromValue(pic ? pic->image() : QImage { });
+              return QVariant::fromValue(pic ? pic->displayImage() : QImage { });
           },
           .setDataFn = [&](Lot *lot, const QVariant &v) { lot->setItem(v.value<const BrickLink::Item *>()); },
           .compareFn = [&](const Lot *l1, const Lot *l2) {

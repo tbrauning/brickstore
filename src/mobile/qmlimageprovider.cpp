@@ -44,7 +44,7 @@ QImage QmlImageProvider::requestImage(const QString &id, QSize *size, const QSiz
             // Only ever shows what is in the cache already: QmlPicture holds a reference to the
             // Picture and only hands out a URL once there is an image, so this cannot miss.
             if (auto pic = BrickLink::core()->pictureCache()->cachedPicture(item, color))
-                image = pic->image();
+                image = pic->displayImage();
         }
     } else if (route == u"color") {
         // Swatches are generated at the exact requested size, because the glitter and speckle

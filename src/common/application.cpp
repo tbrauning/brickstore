@@ -40,6 +40,8 @@
 #include <memory>
 
 #include "bricklink/core.h"
+#include "bricklink/item.h"
+#include "bricklink/picture.h"
 #include "bricklink/store.h"
 #include "bricklink/cart.h"
 #include "bricklink/wantedlist.h"
@@ -55,6 +57,7 @@
 #include "common/recentfiles.h"
 #include "common/uihelpers.h"
 #include "ldraw/library.h"
+#include "ldraw/partimagerenderer.h"
 #include "common/qmlapi.h"
 #include "common/currency.h"
 #include "common/eventfilter.h"
@@ -488,6 +491,31 @@ quint16 Application::mcpServerPort() const
 
 QCoro::Task<> Application::setupLDraw()
 {
+    // If BrickLink cannot provide an image for a part (e.g. it is not reachable), the document
+    // views ask the picture cache for a rendering from the LDraw library instead.
+    BrickLink::core()->pictureCache()->setFallbackRenderer(
+                [](const BrickLink::Item *item, const BrickLink::Color *color) -> QCoro::Task<QImage> {
+        // LDraw only knows parts
+        if (!LDraw::canRenderPartImages || !item || (item->itemTypeId() != 'P')
+                || !LDraw::library()->isValid()) {
+            co_return { };
+        }
+
+        // about the size of the images from BrickLink, which are shown on a white background
+        LDraw::PartImageOptions opts;
+        opts.size = { 256, 192 };
+        opts.supersample = 2;
+        opts.margin = 5;
+        opts.background = Qt::white;
+        co_return co_await LDraw::renderPartImage(item, color, opts);
+    });
+    // the library is loaded asynchronously: renderings that failed for that reason need a retry
+    connect(LDraw::library(), &LDraw::Library::validChanged,
+            this, [](bool valid) {
+        if (valid)
+            BrickLink::core()->pictureCache()->retryFallbackImages();
+    });
+
     auto ldrawDir = Config::inst()->ldrawDir();
 
     if (Config::inst()->value(u"General/LDrawTransition"_qs).toBool()) {

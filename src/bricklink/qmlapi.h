@@ -54,6 +54,7 @@ class QmlPicture : public QObject
     Q_PROPERTY(BrickLink::UpdateStatus updateStatus READ updateStatus NOTIFY updateStatusChanged FINAL)
     Q_PROPERTY(QImage image READ image NOTIFY imageChanged FINAL)
     Q_PROPERTY(QUrl imageUrl READ imageUrl NOTIFY imageUrlChanged FINAL)
+    Q_PROPERTY(bool hasFallbackImage READ hasFallbackImage NOTIFY hasFallbackImageChanged FINAL)
 
 public:
     // The only way to make one: the wrapper is handed to the QML engine, which owns it, so the
@@ -77,9 +78,17 @@ public:
     // BrickLink may have no picture for the item at all, or the picture may have gone stale.
     // The URL embeds lastUpdated(), because QQuickPixmapCache keys its entries by URL: a stable URL
     // would keep showing the image from before the last update.
+    // If there is no BrickLink image, but a rendered stand-in (see requestFallbackImage()), the URL
+    // points to that instead.
     QUrl imageUrl() const;
 
+    bool hasFallbackImage() const;
+
     Q_INVOKABLE void update(bool highPriority = false);
+
+    // Asks for an LDraw rendering to show while there is no BrickLink image (e.g. when BrickLink
+    // cannot be reached). It is cheap to call this repeatedly: see PictureCache.
+    Q_INVOKABLE void requestFallbackImage();
     Q_INVOKABLE void cancelUpdate();
 
 signals:
@@ -88,6 +97,7 @@ signals:
     void updateStatusChanged(BrickLink::UpdateStatus newUpdateStatus);
     void imageChanged(const QImage &newImage);
     void imageUrlChanged();
+    void hasFallbackImageChanged();
 
 private:
     explicit QmlPicture(PictureRef picture);

@@ -49,7 +49,7 @@ Control {
             Text {
                 id: infoNoImage
                 anchors.fill: parent
-                visible: !root.picture || !root.picture.isValid
+                visible: !root.picture || (!root.picture.isValid && !root.picture.hasFallbackImage)
                 color: "#DA4453"
                 fontSizeMode: Text.Fit
                 font.pointSize: root.font.pointSize * 3

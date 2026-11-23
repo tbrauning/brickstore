@@ -1076,6 +1076,9 @@ QmlPicture::QmlPicture(PictureRef picture)
     connect(m_picture.get(), &Picture::isValidChanged, this, &QmlPicture::imageUrlChanged);
     connect(m_picture.get(), &Picture::lastUpdatedChanged, this, &QmlPicture::imageUrlChanged);
     connect(m_picture.get(), &Picture::imageChanged, this, &QmlPicture::imageUrlChanged);
+
+    connect(m_picture.get(), &Picture::fallbackImageChanged, this, &QmlPicture::imageUrlChanged);
+    connect(m_picture.get(), &Picture::fallbackImageChanged, this, &QmlPicture::hasFallbackImageChanged);
 }
 
 const Item *QmlPicture::item() const          { return m_picture->item(); }
@@ -1090,14 +1093,29 @@ QUrl QmlPicture::imageUrl() const
     const auto *item = m_picture->item();  // nullptr if the picture went stale
     const auto *color = m_picture->color();
 
-    if (!item || !m_picture->isValid() || m_picture->image().isNull())
+    const bool hasRealImage = m_picture->isValid() && !m_picture->image().isNull();
+
+    if (!item || (!hasRealImage && !m_picture->hasFallbackImage()))
         return { };
 
+    // the stand-in does not have a time stamp, but its URL changes when the real image arrives
+    const qint64 stamp = hasRealImage ? m_picture->lastUpdated().toMSecsSinceEpoch() : -1;
+
     return QUrl(u"image://" + imageProviderId + u"/picture/"
-                + QString::number(m_picture->lastUpdated().toMSecsSinceEpoch()) + u'/'
+                + QString::number(stamp) + u'/'
                 + QChar::fromLatin1(item->itemTypeId()) + u'/'
                 + QString::number(color ? color->id() : 0) + u'/'
                 + QString::fromLatin1(item->id()));
+}
+
+bool QmlPicture::hasFallbackImage() const
+{
+    return m_picture->hasFallbackImage();
+}
+
+void QmlPicture::requestFallbackImage()
+{
+    core()->pictureCache()->requestFallbackImage(m_picture);
 }
 
 void QmlPicture::update(bool highPriority)

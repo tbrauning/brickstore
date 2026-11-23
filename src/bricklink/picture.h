@@ -3,10 +3,13 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
 
 #include <QtCore/QDateTime>
 #include <QtGui/QImage>
+
+#include <QCoro/QCoroTask>
 
 #include "global.h"
 
@@ -46,7 +49,19 @@ public:
     bool isValid() const              { return m_valid; }
     UpdateStatus updateStatus() const { return m_updateStatus; }
 
+    // The BrickLink image: only meaningful if isValid() is true.
     const QImage image() const;
+
+    // A rendering of the part from the LDraw library, standing in for the BrickLink image while
+    // there is none (e.g. BrickLink is not reachable). It only exists after somebody asked for it
+    // via PictureCache::requestFallbackImage(), and it is dropped again as soon as the real image
+    // arrives.
+    const QImage fallbackImage() const { return m_fallbackImage; }
+    bool hasFallbackImage() const      { return !m_fallbackImage.isNull(); }
+
+    // What to show: the BrickLink image if there is one, the fallback image otherwise. This is
+    // null if neither is available.
+    const QImage displayImage() const;
 
     int cost() const;
 
@@ -59,8 +74,11 @@ signals:
     void lastUpdatedChanged(const QDateTime &newLastUpdated);
     void updateStatusChanged(BrickLink::UpdateStatus newUpdateStatus);
     void imageChanged(const QImage &newImage);
+    void fallbackImageChanged(const QImage &newFallbackImage);
 
 private:
+    enum FallbackState : uint { FallbackNone, FallbackQueued, FallbackDone, FallbackFailed };
+
     const Item * m_item;
     const Color *m_color;
 
@@ -71,17 +89,20 @@ private:
     bool         m_valid           : 1 = false;
     bool         m_updateAfterLoad : 1 = false;
     UpdateStatus m_updateStatus    : 3 = UpdateStatus::Ok;
-    uint         m_reserved        : 27 = 0;
+    uint         m_fallbackState   : 2 = FallbackNone;
+    uint         m_reserved        : 25 = 0;
 
     TransferJob *m_transferJob = nullptr;
 
     QImage       m_image;
+    QImage       m_fallbackImage;
 
 private:
     void setIsValid(bool valid);
     void setUpdateStatus(UpdateStatus status);
     void setLastUpdated(const QDateTime &dt);
     void setImage(const QImage &newImage);
+    void setFallbackImage(const QImage &newFallbackImage);
 
     friend class PictureCache;
     friend class PictureCachePrivate;
@@ -110,6 +131,21 @@ public:
     void updatePicture(const PictureRef &pic, bool highPriority = false);
     void cancelPictureUpdate(const PictureRef &pic);
     void cancelAllPictureUpdates();
+
+    // The BrickLink library knows nothing about LDraw, so whoever does has to plug in a renderer
+    // that turns an item and a color into an image (a null image means "cannot be rendered").
+    using FallbackRenderer = std::function<QCoro::Task<QImage>(const Item *, const Color *)>;
+    void setFallbackRenderer(FallbackRenderer renderer);
+
+    // Ask for a rendered stand-in image, if the picture has no BrickLink image (yet). This is
+    // cheap and can be called as often as needed, e.g. on every repaint: it only does something
+    // once per picture, and not while the picture is still loading or downloading. The result
+    // arrives via pictureUpdated(), and is available via Picture::displayImage().
+    void requestFallbackImage(const PictureRef &pic);
+
+    // Pictures for which rendering failed are not tried again - unless the reason for the failure
+    // went away, e.g. the LDraw library was not ready yet.
+    void retryFallbackImages();
 
 signals:
     // carries a reference, so a slot cannot be handed a picture that dies while it runs

@@ -365,6 +365,7 @@ Page {
                         background: PictureImage {
                             color: "white"
                             picture: picCell.pic
+                            useFallback: true
                         }
                     }
                 }
