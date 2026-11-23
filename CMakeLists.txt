@@ -171,7 +171,8 @@ if (ANDROID OR IOS OR FORCE_MOBILE)
     set(MIN_QT_VERSION 6.11.1)
     add_compile_definitions(BS_MOBILE)
     set(QUICK_CONTROLS "QtQuick.Controls.Material")
-    find_package(Qt6 CONFIG QUIET REQUIRED Qml Quick Quick3D QuickControls2Impl QuickDialogs2 QuickTemplates2 QuickDialogs2Utils Svg Multimedia MultimediaQuickPrivate)
+	# Needed at runtime by Qt5Compat.GraphicalEffects (Maintenance Tool: "Qt 5 Compatibility Module").
+    find_package(Qt6 CONFIG QUIET REQUIRED Qml Quick Quick3D QuickControls2Impl QuickDialogs2 QuickTemplates2 QuickDialogs2Utils Svg Multimedia MultimediaQuickPrivate Core5Compat)
     find_package(Qt6 CONFIG QUIET REQUIRED QmlPrivate QuickPrivate QuickTemplates2Private QuickDialogs2Private QuickControls2ImplPrivate QuickDialogs2UtilsPrivate)
 
 elseif (BACKEND_ONLY)
