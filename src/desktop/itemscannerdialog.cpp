@@ -178,8 +178,9 @@ ItemScannerDialog::ItemScannerDialog(QWidget *parent)
     });
 
     connect(m_capture, &Scanner::Capture::captureAndScanFinished,
-            this, [this](const QVector<const BrickLink::Item *> &items) {
-        emit itemsScanned(items);
+            this, [this](const QVector<const BrickLink::Item *> &items,
+                         const QVector<const BrickLink::Color *> &colors) {
+        emit itemsScanned(items, colors);
         if (!m_pinWindow->isChecked())
             accept();
     });

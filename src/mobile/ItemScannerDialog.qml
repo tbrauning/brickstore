@@ -214,6 +214,7 @@ AutoSizingDialog {
             ItemList {
                 id: itemList
                 anchors.fill: parent
+                useFallbackImages: true
             }
         }
     }

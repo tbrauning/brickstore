@@ -36,7 +36,9 @@ public:
     void setItemType(const BrickLink::ItemType *itemType);
 
 signals:
-    void itemsScanned(const QVector<const BrickLink::Item *> &items);
+    // colors: the scanner's guesses for the color of the scanned object, best first
+    void itemsScanned(const QVector<const BrickLink::Item *> &items,
+                      const QVector<const BrickLink::Color *> &colors = { });
 
 protected:
     void changeEvent(QEvent *e) override;

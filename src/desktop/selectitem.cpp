@@ -77,6 +77,7 @@ public:
     const BrickLink::Item *m_colorFilterLastItem = nullptr;
     ItemScannerDialog *m_itemScannerDialog = nullptr;
     bool             m_itemScannerDialogWasVisible = false;
+    QVector<const BrickLink::Color *> m_scanColors;   // best guess first
 };
 
 
@@ -721,9 +722,13 @@ void SelectItem::scanItemInternal()
         d->m_itemScannerDialog = new ItemScannerDialog(this);
 
         connect(d->m_itemScannerDialog, &ItemScannerDialog::itemsScanned,
-                this, [this](const QVector<const BrickLink::Item *> &items) {
+                this, [this](const QVector<const BrickLink::Item *> &items,
+                             const QVector<const BrickLink::Color *> &colors) {
                     if (items.isEmpty())
                         return;
+
+                    // this has to be set before the filter below changes the current item
+                    d->m_scanColors = colors;
 
                     const BrickLink::Item *oldItem = currentItem();
                     d->w_items->clearSelection();
@@ -756,6 +761,19 @@ void SelectItem::scanItemInternal()
     auto itt = currentItemType();
     d->m_itemScannerDialog->setItemType((itt == BrickLink::ItemTypeModel::AllItemTypes) ? nullptr : itt);
     d->m_itemScannerDialog->show();
+}
+
+const BrickLink::Color *SelectItem::scannedColor(const BrickLink::Item *item) const
+{
+    // the colors are only meaningful as long as we are showing the results of the scan
+    if (!item || d->m_scanColors.isEmpty() || !d->w_filter->text().startsWith(u"scan:"))
+        return nullptr;
+
+    for (const auto *color : std::as_const(d->m_scanColors)) {
+        if (item->hasKnownColor(color))
+            return color;
+    }
+    return nullptr;
 }
 
 QByteArray SelectItem::saveState() const
@@ -946,6 +964,12 @@ void SelectItem::applyFilter()
     d->w_items->clearSelection();
 
     d->itemModel->setFilterText(d->w_filter->text());
+
+    // The results of a scan are only useful if you can see what they are: make sure there is an
+    // image, even if BrickLink is not reachable.
+    const bool isScan = d->w_filter->text().startsWith(u"scan:");
+    d->m_itemsDelegate->setUseFallbackImages(isScan);
+    d->m_thumbsDelegate->setUseFallbackImages(isScan);
 
     setCurrentItem(oldItem);
     if (!currentItem() && d->itemModel->rowCount() == 1)

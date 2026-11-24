@@ -20,9 +20,17 @@ public:
     void paint(QPainter *painter, const QStyleOptionViewItem &option,
                const QModelIndex &index) const override;
 
+    // If BrickLink has no image for an item (e.g. it cannot be reached), show a rendering from
+    // the LDraw library instead. This is opt-in, because rendering is not free.
+    bool useFallbackImages() const { return m_useFallbackImages; }
+    void setUseFallbackImages(bool b) { m_useFallbackImages = b; }
+
 public slots:
     bool helpEvent(QHelpEvent *event, QAbstractItemView *view, const QStyleOptionViewItem &option,
                    const QModelIndex &index) override;
+
+private:
+    bool m_useFallbackImages = false;
 };
 
 

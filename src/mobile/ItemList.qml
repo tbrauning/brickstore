@@ -20,6 +20,9 @@ Control {
     property alias filterWithoutInventory: itemListModel.filterWithoutInventory
     property alias model: itemListModel
 
+    // show a rendering of the part, if BrickLink has no image (e.g. it cannot be reached)
+    property bool useFallbackImages: false
+
     ColumnLayout {
         anchors.fill: parent
 
@@ -80,6 +83,7 @@ Control {
                     anchors.fill: parent
                     anchors.bottomMargin: itemList.labelHeight
                     picture: delegate.pic
+                    useFallback: root.useFallbackImages
                     Rectangle {
                         visible: root.currentItem === delegate.blitem
                         anchors.fill: parent

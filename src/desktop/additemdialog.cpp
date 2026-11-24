@@ -224,7 +224,14 @@ AddItemDialog::AddItemDialog(QWidget *parent)
     connect(w_select_item, &SelectItem::itemSelected,
             this, [this](const BrickLink::Item *item, bool confirmed) {
         updateItemAndColor();
-        w_select_color->setCurrentColorAndItem(w_select_color->currentColor(), item);
+
+        // after a scan, default to the color that the scanner saw (unless the color is locked)
+        auto color = w_select_color->currentColor();
+        if (!w_select_color->colorLock()) {
+            if (const auto *scannedColor = w_select_item->scannedColor(item))
+                color = scannedColor;
+        }
+        w_select_color->setCurrentColorAndItem(color, item);
         w_ui_additem->w_subcondition->setEnabled(item && item->itemType() && item->itemType()->hasSubConditions());
 
         recordBrowseEntry();

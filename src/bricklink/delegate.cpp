@@ -53,9 +53,13 @@ void ItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, 
                 QImage image;
 
                 PictureRef pic = core()->pictureCache()->picture(item, color);
-                if (pic && pic->isValid())
-                    image = pic->image();
-                else
+                if (pic && !pic->isValid() && m_useFallbackImages)
+                    core()->pictureCache()->requestFallbackImage(pic);
+
+                // this is the BrickLink image, or the fallback rendering, if there is one
+                if (pic)
+                    image = pic->displayImage();
+                if (image.isNull())
                     image = core()->noImage(option.rect.size());
 
                 painter->fillRect(option.rect, Qt::white);

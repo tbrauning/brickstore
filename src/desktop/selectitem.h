@@ -31,6 +31,11 @@ public:
     const BrickLink::ItemType *currentItemType() const;
     const BrickLink::Item *currentItem() const;
 
+    // While the item list shows the results of a scan, this is the color the scanner saw for the
+    // item, if it is a color the item is available in. Otherwise (or if the scanner could not
+    // tell) this is a nullptr.
+    const BrickLink::Color *scannedColor(const BrickLink::Item *item) const;
+
     void setCurrentCategory(const BrickLink::Category *cat);
     bool setCurrentItemType(const BrickLink::ItemType *it);
     bool setCurrentItem(const BrickLink::Item *item, bool force_items_category = false);
